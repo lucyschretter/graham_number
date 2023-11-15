@@ -7,9 +7,10 @@ source csv: https://github.com/fja05680/sp500/blob/master/S%26P%20500%20Historic
 """
 
 import pandas as pd
+from collections import Counter
 
 
-def get_quartery_df(filename: str):
+def get_quarterly_df(filename: str):
     df = pd.read_csv(filename, index_col='date')
     df.index = pd.to_datetime(df.index)
     df['tickers'] = df['tickers'].apply(lambda x: sorted(x.split(',')))
@@ -24,7 +25,7 @@ def get_ticker_list_for_target_date(target_date: str):
     :return: list
     """
 
-    df = get_quartery_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
 
     # Loop through the quarterly DataFrame and get historical data for each quarter
     for index, row in df.iterrows():
@@ -36,7 +37,7 @@ def get_ticker_list_for_target_date(target_date: str):
 
 
 def get_most_common_tickers():
-    df = get_quartery_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
 
     # Initialize the list with companies from the first row
     common_tickers = list(df.iloc[0]['tickers'])
@@ -52,7 +53,7 @@ def get_most_common_tickers():
 
 
 def get_unique_companies():
-    df = get_quartery_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
 
     # Create an empty set to store unique tickers
     unique_tickers = set()
@@ -68,4 +69,26 @@ def get_unique_companies():
     return sorted(unique_tickers_list)
 
 
-print(len(get_unique_companies()))
+def get_ticker_frequency():
+    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+
+    # Create a Counter to store the frequency of each company
+    ticker_frequency = Counter()
+
+    # Loop through the quarterly DataFrame and get historical data for each quarter
+    for _, row in df.iterrows():
+        tickers = set(row['tickers'])
+
+        # Update the Counter with the companies present in each quarter
+        ticker_frequency.update(tickers)
+
+    sorted_ticker_frequency = ticker_frequency.most_common()
+
+    return sorted_ticker_frequency
+
+
+# result = get_ticker_frequency()
+# for ticker, count in result:
+    # print(f"{ticker}: {count} times in index")
+
+# print(len(get_unique_companies()))
