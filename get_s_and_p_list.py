@@ -25,7 +25,7 @@ def get_ticker_list_for_target_date(target_date: str):
     :return: list
     """
 
-    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+    df = get_quarterly_df('portfolio_pipeline/S&P 500 Historical Components & Changes(08-01-2023).csv')
 
     # Loop through the quarterly DataFrame and get historical data for each quarter
     for index, row in df.iterrows():
@@ -37,7 +37,7 @@ def get_ticker_list_for_target_date(target_date: str):
 
 
 def get_most_common_tickers():
-    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+    df = get_quarterly_df('portfolio_pipeline/S&P 500 Historical Components & Changes(08-01-2023).csv')
 
     # Initialize the list with companies from the first row
     common_tickers = list(df.iloc[0]['tickers'])
@@ -53,7 +53,7 @@ def get_most_common_tickers():
 
 
 def get_unique_companies():
-    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+    df = get_quarterly_df('portfolio_pipeline/S&P 500 Historical Components & Changes(08-01-2023).csv')
 
     # Create an empty set to store unique tickers
     unique_tickers = set()
@@ -70,7 +70,7 @@ def get_unique_companies():
 
 
 def get_ticker_frequency():
-    df = get_quarterly_df('S&P 500 Historical Components & Changes(08-01-2023).csv')
+    df = get_quarterly_df('portfolio_pipeline/S&P 500 Historical Components & Changes(08-01-2023).csv')
 
     # Create a Counter to store the frequency of each company
     ticker_frequency = Counter()
@@ -91,4 +91,7 @@ def get_ticker_frequency():
 # for ticker, count in result:
     # print(f"{ticker}: {count} times in index")
 
-# print(len(get_unique_companies()))
+
+companies = get_unique_companies()
+print(companies)
+print(len(companies))
