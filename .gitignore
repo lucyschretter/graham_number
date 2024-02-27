@@ -5,4 +5,4 @@ credentials.py
 key-metrics.zip
 
 # ignore s&p 500 ticker list
-S&P 500 Historical Components & Changes(12-30-2023).csv
+portfolio_pipeline/S&P 500 Historical Components & Changes(12-30-2023).csv
