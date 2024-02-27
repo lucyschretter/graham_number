@@ -13,14 +13,14 @@ Keywords: Graham Number, Value Investing, Backtesting
 * Portfolios are generated using key metrics from FMP, closing prices from Alpha Vantage, and the S&P list from the GitHub repository (https://github.com/fja05680/sp500/tree/master).
 
 **Performance Evaluation:**
-*Execute the evaluation using "sliding_window_evaluation.py."
-*Results for each quarter are saved separately (e.g., "final_results_2000-03-31.json"), containing portfolio returns for 1 quarter, 2 quarters, etc., up to 6 years.
-*Merge these files (sample code is also in "sliding_window_evaluation.py").
+* Execute the evaluation using "sliding_window_evaluation.py."
+* Results for each quarter are saved separately (e.g., "final_results_2000-03-31.json"), containing portfolio returns for 1 quarter, 2 quarters, etc., up to 6 years.
+* Merge these files (sample code is also in "sliding_window_evaluation.py").
 
 **Visualization and Benchmark Comparison:**
-*Use "benchmark_visualization.ipynb" to visualize the results and compare them with the benchmark.
+* Use "benchmark_visualization.ipynb" to visualize the results and compare them with the benchmark.
 
 ### Main Results:
-*portfolios_final.json (in directory portfolio_pipeline): contains portfolios for all quarters (tickers and margin of safety)
-*final_returns.json (in evaluation folder): contains performance results
-*evaluation_visualizations
+* portfolios_final.json (in directory portfolio_pipeline): contains portfolios for all quarters (tickers and margin of safety)
+* final_returns.json (in evaluation folder): contains performance results
+* evaluation_visualizations
