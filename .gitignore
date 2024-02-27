@@ -1,2 +1,5 @@
 # Ignore the content of the credentials.py file
 credentials.py
+
+# ignore fmp data
+key-metrics.zip
