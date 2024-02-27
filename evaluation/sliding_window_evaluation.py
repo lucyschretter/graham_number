@@ -29,6 +29,13 @@ def get_nearest_date(items, pivot):
     return nearest, timedelta
 
 def get_adjusted_closing_price(ticker: str, target_date: str):
+    """
+    Get the adjusted closing price of a ticker on a given target date.
+    If there is no possible way through an API, the function returns the nearest closing price.
+    :param ticker: ticker symbol as string
+    :param target_date: target date as string
+    :return: (nearest) adjusted closing price as float
+    """
     closing_price = None
 
     try:
@@ -56,6 +63,13 @@ def get_adjusted_closing_price(ticker: str, target_date: str):
 
 # Funktion zur Berechnung der Renditen des Portfolios
 def calculate_return(start_date, portfolios):
+    """
+    Calculate the total return of a portfolio from a specified start date (investment date)
+    :param start_date: The start date of the investment in the format "%Y-%m-%d"
+    :param portfolios: A dictionary containing portfolios with ticker lists for different start dates
+    :return: The total return of the portfolio
+
+    """
     try:
         # get ticker_list from dictionary:
         ticker_list = portfolios[start_date]
@@ -82,12 +96,8 @@ def calculate_return(start_date, portfolios):
         return f"there is not enough data for start quarter {start_date}"
 
 
-
-
-############################################
-
 # Load JSON content from files
-with open('..\\portfolio_pipeline\\only_portfolios_with_diversification.json', 'r') as file1:
+with open('..\\portfolio_pipeline\\portfolios_final.json', 'r') as file1:
     portfolios_dict = json.load(file1)
 
 # restructure portfolio dictionary
@@ -96,13 +106,13 @@ for key, value in portfolios_dict.items():
     portfolios_dict_cleaned[key] = [k for k in value.keys()]
 
 
-# define start dates
+# define (investment) start dates
 start_dates = list(portfolios_dict.keys())
 
+# variable to save results to
 results = {}
 
 for i, start_date in enumerate(start_dates):
-    print(i)
     try:
         print('Start date: ', start_date)
         ticker_list = portfolios_dict_cleaned[start_date]
@@ -113,6 +123,7 @@ for i, start_date in enumerate(start_dates):
 
         result_list = []
 
+        # iterate through 24 quarters (=6 years)
         for y in range(1, 25):
             if i + y < len(start_dates):
                 print(i + y)
@@ -126,41 +137,43 @@ for i, start_date in enumerate(start_dates):
 
                 print(f"Investment start: {start_date}, Investment end: {end_date}, Total return: {total_return_for_period}")
 
+                # add period-return pair to result list
                 result_list.append({f'Period-{y}': total_return_for_period})
 
-                # Aktualisierung des total_start_values für die nächste Iteration
+                # update total_start_values for next iteration
                 total_start_values = total_end_values
             else:
                 print('Daten außerhalb des Untersuchungszeitraums')
 
+        # add list with period-return pair to result dictionary
         results[start_date] = result_list
 
-        # Ergebnisse nach jedem Startdatum in eine JSON-Datei schreiben
-        with open(f'results_{start_date}.json', 'w') as outfile:
+        # write results for start_date to json file
+        with open(f'final_results_data/final_results_{start_date}.json', 'w') as outfile:
             json.dump(results, outfile)
 
-        # Leeren der Datenstrukturen
+        # clean results dict
         results = {}
 
     except Exception as e:
         print(f"Fehler für {start_date}: {e}")
 
+'''
 
-'''# merge jsons
+# merge jsons (in this case first two quarters...)
 
-# Lese die beiden JSON-Dateien
-with open('returns_all_year_with_mos.json', 'r') as file1:
+with open('final_results_data/final_results_2000-03-31.json', 'r') as file1:
     data1 = json.load(file1)
-
-with open('results_2023-12-31.json', 'r') as file2:
+with open('final_results_data/final_results_2000-06-30.json', 'r') as file2:
     data2 = json.load(file2)
 
-# Füge die Daten zusammen
+# merge data
 merged_data = {**data1, **data2}
 
 print(merged_data)
 
-# Speichere die kombinierten Daten in einer neuen Datei
-with open('returns_all_year_with_mos.json', 'w') as outfile:
+# save combined data to json (and repeat...)
+with open('final_results_data/final_returns.json', 'w') as outfile:
     json.dump(merged_data, outfile, indent=2)
+
 '''
