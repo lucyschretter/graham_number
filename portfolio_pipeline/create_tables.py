@@ -1,6 +1,8 @@
 from credentials import api_key
 import zipfile
 from datetime import datetime
+from util import get_closing_price
+from util import get_key_metrics
 from util import get_quarters_df
 from main import create_portfolio
 from util import get_quarters_df
@@ -9,103 +11,13 @@ import math
 import os
 import pandas as pd
 
-# functions
-
-def get_nearest_date(items, pivot):
+def calculate_gn_with_avg_eps(ticker, target_date):
     """
-    Finds the nearest date in a list of date strings to a given pivot date.
-    (source: https://stackoverflow.com/questions/32237862/find-the-closest-date-to-a-given-date)
-    :param items: (list of str) A list containing date strings in the format "%Y-%m-%d".
-    :param pivot: (str) The date string in the format "%Y-%m-%d" to which the nearest date is sought.
-    :return: nearest (datetime): The nearest datetime object to the pivot date.
-            timedelta (timedelta): The time difference between the nearest date and the pivot date.
+    function to calculate graham number like in util.py but append interim results to dataframe
+    :param ticker: ticker symbol of the required company
+    :param target_date: quarter date
+    :return: DataFrame with columns CosingPrice, Graham Number , average EPS and BVPS
     """
-    if pivot is None:
-        return None, None
-
-    # Convert the date strings to datetime objects
-    items = [datetime.strptime(date, "%Y-%m-%d") for date in items if type(date) == str]
-
-    if type(pivot) == str:
-        pivot = datetime.strptime(pivot, "%Y-%m-%d")
-
-
-    if not items:
-        return None, None
-
-    nearest = min(items, key=lambda x: abs(x - pivot))
-    timedelta = abs(nearest - pivot)
-    return nearest, timedelta
-
-
-
-def get_closing_price(ticker: str, target_date: str):
-    """
-    Get the closing price of a ticker on a given target date.
-    If there is no possible way through an API, the function returns the nearest closing price.
-    :param ticker: ticker symbol as string
-    :param target_date: target date as string
-    :return: (nearest) closing price as float
-    """
-
-    closing_price = None
-
-    alpha_vantage_url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full&apikey={api_key}&datatype=csv'
-    alpha_vantage_csv = pd.read_csv(alpha_vantage_url)
-    alpha_vantage_df = pd.DataFrame(alpha_vantage_csv)
-
-    # Try fetching from Alpha Vantage
-    for index, row in alpha_vantage_df.iterrows():
-        if row['timestamp'] == target_date:
-            closing_price = row['close']
-            # print(f"Found exact match in Alpha Vantage: {closing_price}")
-            return closing_price
-
-    if closing_price is None:
-        print(f'Not exact date for {ticker}')
-        # find the nearest closing price
-        dates = alpha_vantage_df['timestamp']
-        nearest_date, timedelta = get_nearest_date(dates, target_date)
-
-        # Check if nearest_date is None
-        if nearest_date is None:
-            return None
-
-        # Get closing price of nearest date
-        nearest_date_str = nearest_date.strftime("%Y-%m-%d")
-        for index, row in alpha_vantage_df.iterrows():
-            if row['timestamp'] == nearest_date_str:
-                nearest_closing_price = row['close']
-                # print(f"Found nearest closing price: {nearest_closing_price} on {nearest_date_str}")
-                return nearest_closing_price
-    else:
-        return closing_price
-
-
-def get_key_metrics(zip_file_path: str, ticker: str):
-    """
-    Retrieves key metrics for the given ticker symbol from a JSON file within a zip folder.
-
-    :param zip_file_path: File path of the zip folder containing the key_metrics.json file.
-    :param ticker: Ticker symbol as a string.
-    :return: Pandas DataFrame containing key metrics for the given ticker symbol.
-    """
-    file_name = f'{ticker}_key-metrics.json'
-
-    try:
-        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-            with zip_ref.open(file_name) as file:
-                content = pd.read_json(file)
-                return content
-    except FileNotFoundError:
-        print(f"File {file_name} not found in the provided zip folder path: {zip_file_path}")
-        return pd.DataFrame()  # Returning an empty DataFrame on file not found
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return pd.DataFrame()
-
-
-'''def calculate_gn_with_avg_eps(ticker, target_date):
     graham_num_data = {"Ticker":ticker}
     # Get key metrics
     key_metrics = get_key_metrics('../key-metrics.zip', ticker)
@@ -153,15 +65,61 @@ def get_key_metrics(zip_file_path: str, ticker: str):
 
     return graham_num_data
 
+'''
+
+
+# creating tables for year 2023 (due to different ticker list construction)
+
+q1_2023 = '2023-03-31'
+q2_2023 = '2023-06-30'
+q3_2023 = '2023-09-30'
+q4_2023 = '2023-12-31'
+
+
+
+tickers_q1_23 = "A,AAL,AAP,AAPL,ABBV,ABC,ABT,ACGL,ACN,ADBE,ADI,ADM,ADP,ADSK,AEE,AEP,AES,AFL,AIG,AIZ,AJG,AKAM,ALB,ALGN,ALK,ALL,ALLE,AMAT,AMCR,AMD,AME,AMGN,AMP,AMT,AMZN,ANET,ANSS,AON,AOS,APA,APD,APH,APTV,ARE,ATO,ATVI,AVB,AVGO,AVY,AWK,AXP,AZO,BA,BAC,BALL,BAX,BBWI,BBY,BDX,BEN,BF.B,BG,BIIB,BIO,BK,BKNG,BKR,BLK,BMY,BR,BRK.B,BRO,BSX,BWA,BXP,C,CAG,CAH,CARR,CAT,CB,CBOE,CBRE,CCI,CCL,CDAY,CDNS,CDW,CE,CEG,CF,CFG,CHD,CHRW,CHTR,CI,CINF,CL,CLX,CMA,CMCSA,CME,CMG,CMI,CMS,CNC,CNP,COF,COO,COP,COST,CPB,CPRT,CPT,CRL,CRM,CSCO,CSGP,CSX,CTAS,CTLT,CTRA,CTSH,CTVA,CVS,CVX,CZR,D,DAL,DD,DE,DFS,DG,DGX,DHI,DHR,DIS,DISH,DLR,DLTR,DOV,DOW,DPZ,DRI,DTE,DUK,DVA,DVN,DXC,DXCM,EA,EBAY,ECL,ED,EFX,EIX,EL,ELV,EMN,EMR,ENPH,EOG,EPAM,EQIX,EQR,EQT,ES,ESS,ETN,ETR,ETSY,EVRG,EW,EXC,EXPD,EXPE,EXR,F,FANG,FAST,FCX,FDS,FDX,FE,FFIV,FICO,FIS,FISV,FITB,FLT,FMC,FOX,FOXA,FRC,FRT,FSLR,FTNT,FTV,GD,GE,GEHC,GEN,GILD,GIS,GL,GLW,GM,GNRC,GOOG,GOOGL,GPC,GPN,GRMN,GS,GWW,HAL,HAS,HBAN,HCA,HD,HES,HIG,HII,HLT,HOLX,HON,HPE,HPQ,HRL,HSIC,HST,HSY,HUM,HWM,IBM,ICE,IDXX,IEX,IFF,ILMN,INCY,INTC,INTU,INVH,IP,IPG,IQV,IR,IRM,ISRG,IT,ITW,IVZ,J,JBHT,JCI,JKHY,JNJ,JNPR,JPM,K,KDP,KEY,KEYS,KHC,KIM,KLAC,KMB,KMI,KMX,KO,KR,L,LDOS,LEN,LH,LHX,LIN,LKQ,LLY,LMT,LNC,LNT,LOW,LRCX,LUV,LVS,LW,LYB,LYV,MA,MAA,MAR,MAS,MCD,MCHP,MCK,MCO,MDLZ,MDT,MET,META,MGM,MHK,MKC,MKTX,MLM,MMC,MMM,MNST,MO,MOH,MOS,MPC,MPWR,MRK,MRNA,MRO,MS,MSCI,MSFT,MSI,MTB,MTCH,MTD,MU,NCLH,NDAQ,NDSN,NEE,NEM,NFLX,NI,NKE,NOC,NOW,NRG,NSC,NTAP,NTRS,NUE,NVDA,NVR,NWL,NWS,NWSA,NXPI,O,ODFL,OGN,OKE,OMC,ON,ORCL,ORLY,OTIS,OXY,PARA,PAYC,PAYX,PCAR,PCG,PEAK,PEG,PEP,PFE,PFG,PG,PGR,PH,PHM,PKG,PKI,PLD,PM,PNC,PNR,PNW,PODD,POOL,PPG,PPL,PRU,PSA,PSX,PTC,PWR,PXD,PYPL,QCOM,QRVO,RCL,RE,REG,REGN,RF,RHI,RJF,RL,RMD,ROK,ROL,ROP,ROST,RSG,RTX,SBAC,SBUX,SCHW,SEDG,SEE,SHW,SJM,SLB,SNA,SNPS,SO,SPG,SPGI,SRE,STE,STLD,STT,STX,STZ,SWK,SWKS,SYF,SYK,SYY,T,TAP,TDG,TDY,TECH,TEL,TER,TFC,TFX,TGT,TJX,TMO,TMUS,TPR,TRGP,TRMB,TROW,TRV,TSCO,TSLA,TSN,TT,TTWO,TXN,TXT,TYL,UAL,UDR,UHS,ULTA,UNH,UNP,UPS,URI,USB,V,VFC,VICI,VLO,VMC,VRSK,VRSN,VRTX,VTR,VTRS,VZ,WAB,WAT,WBA,WBD,WDC,WEC,WELL,WFC,WHR,WM,WMB,WMT,WRB,WRK,WST,WTW,WY,WYNN,XEL,XOM,XRAY,XYL,YUM,ZBH,ZBRA,ZION,ZTS"
+tickers_q2_23 = "A,AAL,AAP,AAPL,ABBV,ABC,ABT,ACGL,ACN,ADBE,ADI,ADM,ADP,ADSK,AEE,AEP,AES,AFL,AIG,AIZ,AJG,AKAM,ALB,ALGN,ALK,ALL,ALLE,AMAT,AMCR,AMD,AME,AMGN,AMP,AMT,AMZN,ANET,ANSS,AON,AOS,APA,APD,APH,APTV,ARE,ATO,ATVI,AVB,AVGO,AVY,AWK,AXON,AXP,AZO,BA,BAC,BALL,BAX,BBWI,BBY,BDX,BEN,BF.B,BG,BIIB,BIO,BK,BKNG,BKR,BLK,BMY,BR,BRK.B,BRO,BSX,BWA,BXP,C,CAG,CAH,CARR,CAT,CB,CBOE,CBRE,CCI,CCL,CDAY,CDNS,CDW,CE,CEG,CF,CFG,CHD,CHRW,CHTR,CI,CINF,CL,CLX,CMA,CMCSA,CME,CMG,CMI,CMS,CNC,CNP,COF,COO,COP,COST,CPB,CPRT,CPT,CRL,CRM,CSCO,CSGP,CSX,CTAS,CTLT,CTRA,CTSH,CTVA,CVS,CVX,CZR,D,DAL,DD,DE,DFS,DG,DGX,DHI,DHR,DIS,DLR,DLTR,DOV,DOW,DPZ,DRI,DTE,DUK,DVA,DVN,DXC,DXCM,EA,EBAY,ECL,ED,EFX,EG,EIX,EL,ELV,EMN,EMR,ENPH,EOG,EPAM,EQIX,EQR,EQT,ES,ESS,ETN,ETR,ETSY,EVRG,EW,EXC,EXPD,EXPE,EXR,F,FANG,FAST,FCX,FDS,FDX,FE,FFIV,FI,FICO,FIS,FITB,FLT,FMC,FOX,FOXA,FRT,FSLR,FTNT,FTV,GD,GE,GEHC,GEN,GILD,GIS,GL,GLW,GM,GNRC,GOOG,GOOGL,GPC,GPN,GRMN,GS,GWW,HAL,HAS,HBAN,HCA,HD,HES,HIG,HII,HLT,HOLX,HON,HPE,HPQ,HRL,HSIC,HST,HSY,HUM,HWM,IBM,ICE,IDXX,IEX,IFF,ILMN,INCY,INTC,INTU,INVH,IP,IPG,IQV,IR,IRM,ISRG,IT,ITW,IVZ,J,JBHT,JCI,JKHY,JNJ,JNPR,JPM,K,KDP,KEY,KEYS,KHC,KIM,KLAC,KMB,KMI,KMX,KO,KR,L,LDOS,LEN,LH,LHX,LIN,LKQ,LLY,LMT,LNC,LNT,LOW,LRCX,LUV,LVS,LW,LYB,LYV,MA,MAA,MAR,MAS,MCD,MCHP,MCK,MCO,MDLZ,MDT,MET,META,MGM,MHK,MKC,MKTX,MLM,MMC,MMM,MNST,MO,MOH,MOS,MPC,MPWR,MRK,MRNA,MRO,MS,MSCI,MSFT,MSI,MTB,MTCH,MTD,MU,NCLH,NDAQ,NDSN,NEE,NEM,NFLX,NI,NKE,NOC,NOW,NRG,NSC,NTAP,NTRS,NUE,NVDA,NVR,NWL,NWS,NWSA,NXPI,O,ODFL,OGN,OKE,OMC,ON,ORCL,ORLY,OTIS,OXY,PANW,PARA,PAYC,PAYX,PCAR,PCG,PEAK,PEG,PEP,PFE,PFG,PG,PGR,PH,PHM,PKG,PLD,PM,PNC,PNR,PNW,PODD,POOL,PPG,PPL,PRU,PSA,PSX,PTC,PWR,PXD,PYPL,QCOM,QRVO,RCL,REG,REGN,RF,RHI,RJF,RL,RMD,ROK,ROL,ROP,ROST,RSG,RTX,RVTY,SBAC,SBUX,SCHW,SEDG,SEE,SHW,SJM,SLB,SNA,SNPS,SO,SPG,SPGI,SRE,STE,STLD,STT,STX,STZ,SWK,SWKS,SYF,SYK,SYY,T,TAP,TDG,TDY,TECH,TEL,TER,TFC,TFX,TGT,TJX,TMO,TMUS,TPR,TRGP,TRMB,TROW,TRV,TSCO,TSLA,TSN,TT,TTWO,TXN,TXT,TYL,UAL,UDR,UHS,ULTA,UNH,UNP,UPS,URI,USB,V,VFC,VICI,VLO,VMC,VRSK,VRSN,VRTX,VTR,VTRS,VZ,WAB,WAT,WBA,WBD,WDC,WEC,WELL,WFC,WHR,WM,WMB,WMT,WRB,WRK,WST,WTW,WY,WYNN,XEL,XOM,XRAY,XYL,YUM,ZBH,ZBRA,ZION,ZTS"
+tickers_q3_23 = "A,AAL,AAPL,ABBV,ABNB,ABT,ACGL,ACN,ADBE,ADI,ADM,ADP,ADSK,AEE,AEP,AES,AFL,AIG,AIZ,AJG,AKAM,ALB,ALGN,ALK,ALL,ALLE,AMAT,AMCR,AMD,AME,AMGN,AMP,AMT,AMZN,ANET,ANSS,AON,AOS,APA,APD,APH,APTV,ARE,ATO,ATVI,AVB,AVGO,AVY,AWK,AXON,AXP,AZO,BA,BAC,BALL,BAX,BBWI,BBY,BDX,BEN,BF.B,BG,BIIB,BIO,BK,BKNG,BKR,BLK,BMY,BR,BRK.B,BRO,BSX,BWA,BX,BXP,C,CAG,CAH,CARR,CAT,CB,CBOE,CBRE,CCI,CCL,CDAY,CDNS,CDW,CE,CEG,CF,CFG,CHD,CHRW,CHTR,CI,CINF,CL,CLX,CMA,CMCSA,CME,CMG,CMI,CMS,CNC,CNP,COF,COO,COP,COR,COST,CPB,CPRT,CPT,CRL,CRM,CSCO,CSGP,CSX,CTAS,CTLT,CTRA,CTSH,CTVA,CVS,CVX,CZR,D,DAL,DD,DE,DFS,DG,DGX,DHI,DHR,DIS,DLR,DLTR,DOV,DOW,DPZ,DRI,DTE,DUK,DVA,DVN,DXC,DXCM,EA,EBAY,ECL,ED,EFX,EG,EIX,EL,ELV,EMN,EMR,ENPH,EOG,EPAM,EQIX,EQR,EQT,ES,ESS,ETN,ETR,ETSY,EVRG,EW,EXC,EXPD,EXPE,EXR,F,FANG,FAST,FCX,FDS,FDX,FE,FFIV,FI,FICO,FIS,FITB,FLT,FMC,FOX,FOXA,FRT,FSLR,FTNT,FTV,GD,GE,GEHC,GEN,GILD,GIS,GL,GLW,GM,GNRC,GOOG,GOOGL,GPC,GPN,GRMN,GS,GWW,HAL,HAS,HBAN,HCA,HD,HES,HIG,HII,HLT,HOLX,HON,HPE,HPQ,HRL,HSIC,HST,HSY,HUM,HWM,IBM,ICE,IDXX,IEX,IFF,ILMN,INCY,INTC,INTU,INVH,IP,IPG,IQV,IR,IRM,ISRG,IT,ITW,IVZ,J,JBHT,JCI,JKHY,JNJ,JNPR,JPM,K,KDP,KEY,KEYS,KHC,KIM,KLAC,KMB,KMI,KMX,KO,KR,KVUE,L,LDOS,LEN,LH,LHX,LIN,LKQ,LLY,LMT,LNT,LOW,LRCX,LUV,LVS,LW,LYB,LYV,MA,MAA,MAR,MAS,MCD,MCHP,MCK,MCO,MDLZ,MDT,MET,META,MGM,MHK,MKC,MKTX,MLM,MMC,MMM,MNST,MO,MOH,MOS,MPC,MPWR,MRK,MRNA,MRO,MS,MSCI,MSFT,MSI,MTB,MTCH,MTD,MU,NCLH,NDAQ,NDSN,NEE,NEM,NFLX,NI,NKE,NOC,NOW,NRG,NSC,NTAP,NTRS,NUE,NVDA,NVR,NWS,NWSA,NXPI,O,ODFL,OGN,OKE,OMC,ON,ORCL,ORLY,OTIS,OXY,PANW,PARA,PAYC,PAYX,PCAR,PCG,PEAK,PEG,PEP,PFE,PFG,PG,PGR,PH,PHM,PKG,PLD,PM,PNC,PNR,PNW,PODD,POOL,PPG,PPL,PRU,PSA,PSX,PTC,PWR,PXD,PYPL,QCOM,QRVO,RCL,REG,REGN,RF,RHI,RJF,RL,RMD,ROK,ROL,ROP,ROST,RSG,RTX,RVTY,SBAC,SBUX,SCHW,SEDG,SEE,SHW,SJM,SLB,SNA,SNPS,SO,SPG,SPGI,SRE,STE,STLD,STT,STX,STZ,SWK,SWKS,SYF,SYK,SYY,T,TAP,TDG,TDY,TECH,TEL,TER,TFC,TFX,TGT,TJX,TMO,TMUS,TPR,TRGP,TRMB,TROW,TRV,TSCO,TSLA,TSN,TT,TTWO,TXN,TXT,TYL,UAL,UDR,UHS,ULTA,UNH,UNP,UPS,URI,USB,V,VFC,VICI,VLO,VMC,VRSK,VRSN,VRTX,VTR,VTRS,VZ,WAB,WAT,WBA,WBD,WDC,WEC,WELL,WFC,WHR,WM,WMB,WMT,WRB,WRK,WST,WTW,WY,WYNN,XEL,XOM,XRAY,XYL,YUM,ZBH,ZBRA,ZION,ZTS"
+tickers_q4_23 = "A,AAL,AAPL,ABBV,ABNB,ABT,ACGL,ACN,ADBE,ADI,ADM,ADP,ADSK,AEE,AEP,AES,AFL,AIG,AIZ,AJG,AKAM,ALB,ALGN,ALL,ALLE,AMAT,AMCR,AMD,AME,AMGN,AMP,AMT,AMZN,ANET,ANSS,AON,AOS,APA,APD,APH,APTV,ARE,ATO,AVB,AVGO,AVY,AWK,AXON,AXP,AZO,BA,BAC,BALL,BAX,BBWI,BBY,BDX,BEN,BF.B,BG,BIIB,BIO,BK,BKNG,BKR,BLDR,BLK,BMY,BR,BRK.B,BRO,BSX,BWA,BX,BXP,C,CAG,CAH,CARR,CAT,CB,CBOE,CBRE,CCI,CCL,CDAY,CDNS,CDW,CE,CEG,CF,CFG,CHD,CHRW,CHTR,CI,CINF,CL,CLX,CMA,CMCSA,CME,CMG,CMI,CMS,CNC,CNP,COF,COO,COP,COR,COST,CPB,CPRT,CPT,CRL,CRM,CSCO,CSGP,CSX,CTAS,CTLT,CTRA,CTSH,CTVA,CVS,CVX,CZR,D,DAL,DD,DE,DFS,DG,DGX,DHI,DHR,DIS,DLR,DLTR,DOV,DOW,DPZ,DRI,DTE,DUK,DVA,DVN,DXCM,EA,EBAY,ECL,ED,EFX,EG,EIX,EL,ELV,EMN,EMR,ENPH,EOG,EPAM,EQIX,EQR,EQT,ES,ESS,ETN,ETR,ETSY,EVRG,EW,EXC,EXPD,EXPE,EXR,F,FANG,FAST,FCX,FDS,FDX,FE,FFIV,FI,FICO,FIS,FITB,FLT,FMC,FOX,FOXA,FRT,FSLR,FTNT,FTV,GD,GE,GEHC,GEN,GILD,GIS,GL,GLW,GM,GNRC,GOOG,GOOGL,GPC,GPN,GRMN,GS,GWW,HAL,HAS,HBAN,HCA,HD,HES,HIG,HII,HLT,HOLX,HON,HPE,HPQ,HRL,HSIC,HST,HSY,HUBB,HUM,HWM,IBM,ICE,IDXX,IEX,IFF,ILMN,INCY,INTC,INTU,INVH,IP,IPG,IQV,IR,IRM,ISRG,IT,ITW,IVZ,J,JBHT,JBL,JCI,JKHY,JNJ,JNPR,JPM,K,KDP,KEY,KEYS,KHC,KIM,KLAC,KMB,KMI,KMX,KO,KR,KVUE,L,LDOS,LEN,LH,LHX,LIN,LKQ,LLY,LMT,LNT,LOW,LRCX,LULU,LUV,LVS,LW,LYB,LYV,MA,MAA,MAR,MAS,MCD,MCHP,MCK,MCO,MDLZ,MDT,MET,META,MGM,MHK,MKC,MKTX,MLM,MMC,MMM,MNST,MO,MOH,MOS,MPC,MPWR,MRK,MRNA,MRO,MS,MSCI,MSFT,MSI,MTB,MTCH,MTD,MU,NCLH,NDAQ,NDSN,NEE,NEM,NFLX,NI,NKE,NOC,NOW,NRG,NSC,NTAP,NTRS,NUE,NVDA,NVR,NWS,NWSA,NXPI,O,ODFL,OKE,OMC,ON,ORCL,ORLY,OTIS,OXY,PANW,PARA,PAYC,PAYX,PCAR,PCG,PEAK,PEG,PEP,PFE,PFG,PG,PGR,PH,PHM,PKG,PLD,PM,PNC,PNR,PNW,PODD,POOL,PPG,PPL,PRU,PSA,PSX,PTC,PWR,PXD,PYPL,QCOM,QRVO,RCL,REG,REGN,RF,RHI,RJF,RL,RMD,ROK,ROL,ROP,ROST,RSG,RTX,RVTY,SBAC,SBUX,SCHW,SHW,SJM,SLB,SNA,SNPS,SO,SPG,SPGI,SRE,STE,STLD,STT,STX,STZ,SWK,SWKS,SYF,SYK,SYY,T,TAP,TDG,TDY,TECH,TEL,TER,TFC,TFX,TGT,TJX,TMO,TMUS,TPR,TRGP,TRMB,TROW,TRV,TSCO,TSLA,TSN,TT,TTWO,TXN,TXT,TYL,UAL,UBER,UDR,UHS,ULTA,UNH,UNP,UPS,URI,USB,V,VFC,VICI,VLO,VLTO,VMC,VRSK,VRSN,VRTX,VTR,VTRS,VZ,WAB,WAT,WBA,WBD,WDC,WEC,WELL,WFC,WHR,WM,WMB,WMT,WRB,WRK,WST,WTW,WY,WYNN,XEL,XOM,XRAY,XYL,YUM,ZBH,ZBRA,ZION,ZTS"
+
+
+ticker_list_q1_23 = tickers_q1_23.split(',')
+ticker_list_q2_23 = tickers_q2_23.split(',')
+ticker_list_q3_23 = tickers_q3_23.split(',')
+ticker_list_q4_23 = tickers_q4_23.split(',')
+
+quarter_data = []
+
+# Loop through each quarter and ticker to collect the metrics
+for ticker in ticker_list_q4_23: # change ticker list accordingly
+    try:
+        print(ticker)
+        ticker_data = calculate_gn_with_avg_eps(ticker, q4_2023) # change quarter
+
+        # metrics_dict = get_metrics(ticker, quarter)
+        quarter_data.append(ticker_data)
+
+        # Create a DataFrame from the list of dictionaries
+        df = pd.DataFrame(quarter_data)
+
+        # Save the DataFrame to a CSV file for each quarter
+        csv_file_name = f'key_metrics_with_average_eps/quarterly_metrics_{q4_2023}_avg_eps.csv' # change quarter here too
+        df.to_csv(csv_file_name, index=False)
+        print(f"Saved {csv_file_name}")
+    except Exception as e:
+        print(e)
+
+
+
+
+
 
 quarters = get_quarters_df()
-
-
 for index, row in quarters.iterrows():
     # Initialize an empty list to store the dictionaries for each quarter
     quarter_data = []
 
-    quarter = row['end_date'].strftime("%Y-%m-%d")
+    quarter = row['date'].strftime("%Y-%m-%d")
     print(quarter)
 
     ticker_list = get_ticker_list_for_target_date(quarter)
@@ -172,30 +130,36 @@ for index, row in quarters.iterrows():
         try:
             print(ticker)
             ticker_data = calculate_gn_with_avg_eps(ticker, quarter)
-
-            #metrics_dict = get_metrics(ticker, quarter)
+            
             quarter_data.append(ticker_data)
 
             # Create a DataFrame from the list of dictionaries
             df = pd.DataFrame(quarter_data)
 
             # Save the DataFrame to a CSV file for each quarter
-            csv_file_name = f'quarterly_metrics_{quarter}.csv'
+            csv_file_name = f'key_metrics_with_average_eps/quarterly_metrics_{quarter}_avg_eps.csv'
             df.to_csv(csv_file_name, index=False)
             print(f"Saved {csv_file_name}")
         except Exception as e:
-            print(e)
-'''
+            print(e)'''
 
+
+# calculate price earnings ratio and price book value ratio from quarterly metrics (see above)
 
 def calculate_ratios(input_file, output_folder):
-    # Lade die CSV-Datei
+    """
+    calculate price earnings ratio and price book value ratio from quarterly metrics
+    :param input_file: DataFrame with columns EPS, BVPS, GrahamNumber, ClosingPrice
+    :param output_folder: path where the result dataframe will be saved to
+    :return: DataFrame with columns EPS, BVPS, GrahamNumber, ClosingPrice, KGV (= price earnings ratio), KBV (=price book value ratio)
+    """
+    # load csv
     data = pd.read_csv(input_file)
 
-    # Extrahiere das Datum aus dem Dateinamen
+    # Extract the date from the file name
     date_str = os.path.basename(input_file).split('_')[2].split('.')[0]
 
-    # Füge die Spalten KGV und KBV hinzu
+    # Add the columns KGV (P/E ratio) and KBV (P/B ratio)
     if 'EPS' in data.columns and 'ClosingPrice' in data.columns:
         data['KGV'] = data.apply(lambda row: row['ClosingPrice'] / row['EPS'] if pd.notna(row['EPS']) and row['EPS'] != 0 else None, axis=1)
     else:
@@ -206,23 +170,23 @@ def calculate_ratios(input_file, output_folder):
     else:
         print('Warnung: "BVPS" oder "ClosingPrice" nicht in den Spalten vorhanden, KBV wird nicht berechnet.')
 
-    # Erstelle den Ausgabepfad
+    # Create the output path
     output_file = os.path.join(output_folder, f'metrics_with_ratios_{date_str}.csv')
 
-    # Speichere die aktualisierten Daten in einer neuen CSV-Datei
+    # Save the updated data to a new CSV file
     data.to_csv(output_file, index=False)
 
     print(f'Die Daten wurden aktualisiert und in {output_file} gespeichert.')
 
-# Passe diese Pfade entsprechend deiner Ordnerstruktur an
-input_folder = '.'  # Annahme: Dateien befinden sich im gleichen Ordner wie das Skript
-output_folder = 'ratios_metrics'
+# Adjust these paths according to your folder structure
+input_folder = 'key_metrics_per_quarter_with_avg_eps'  # Annahme: Dateien befinden sich im gleichen Ordner wie das Skript
+output_folder = 'key_metrics_per_quarter_with_avg_eps_with_ratios'
 
-# Überprüfe, ob der Ausgabeordner existiert, wenn nicht, erstelle ihn
+# Check if the output folder exists, if not, create it
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
-# Durchlaufe alle CSV-Dateien im Eingabeordner und aktualisiere sie
+# Iterate through all CSV files in the input folder and update them
 for file_name in os.listdir(input_folder):
     if file_name.startswith('quarterly_metrics') and file_name.endswith('.csv'):
         input_path = os.path.join(input_folder, file_name)
