@@ -1,7 +1,6 @@
 from main import create_portfolio
 from util import get_quarters_df
 from util import get_ticker_list_for_target_date
-
 import json
 
 
@@ -28,5 +27,5 @@ if __name__ == "__main__":
 print(result_dict)
 
 # Save the dictionary as a JSON file
-with open('portfolios_new', 'w') as json_file:
+with open('portfolios_final.json', 'w') as json_file:
     json.dump(result_dict, json_file)
