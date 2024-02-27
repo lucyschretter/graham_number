@@ -5,10 +5,10 @@ from credentials import api_key
 from datetime import datetime
 
 
-def get_quarters_df(start_date="1999-12-31", end_date="2022-12-31"):
+def get_quarters_df(start_date="2000-03-31", end_date="2023-12-31"):
     """
-    :param start_date: quarter dataframe starts per default on the last day of 1999
-    :param end_date: quarter dataframe end per default on the last day of 2022 (because there was an inconsistency for the s&p lists in 2023)
+    :param start_date: quarter dataframe starts per default on the last day of quarter 1 in 2000
+    :param end_date: quarter dataframe end per default on the last day of 2023
     :return: dataframe that contains the  quarter data (date, year, quarter)
     """
     # quarterly: freq='Q'
@@ -24,6 +24,13 @@ def get_quarters_df(start_date="1999-12-31", end_date="2022-12-31"):
 def get_ticker_list_for_target_date(target_date: str):
     """
     function to get the tickers that were in the s&p index on a specific date
+
+    this function is based on the code in the following github repository: https://github.com/fja05680/sp500/blob/master
+    code: https://github.com/fja05680/sp500/blob/master/sp500_by_date.ipynb
+
+    dates range from 1996-01-02 to 2023-10-18 (date where the companies changed for the last time till 12-30-2023)
+    source csv: https://github.com/fja05680/sp500/blob/master/S%26P%20500%20Historical%20Components%20%26%20Changes(12-30-2023).csv
+
     :param target_date: (historical) date on which the portfolio construction will be done
     :return: list of tickers
     """
@@ -244,27 +251,3 @@ def calculate_acceptable_price(ticker: str, target_date: str):
     else:
         print('graham number is None')
         return None
-
-
-def create_portfolio(ticker_list, quarter_end_date):
-    portfolio = {}
-    for ticker in ticker_list:
-
-        try:
-            date = get_reported_date(ticker, quarter_end_date)
-            price = get_closing_price(ticker, date)
-            print(f"Closing price for {ticker} on {date}: {price}")
-            acceptable_price = calculate_acceptable_price(ticker, date)
-
-            # find the undervalued stocks
-            if price < acceptable_price:
-                difference = acceptable_price / price
-                portfolio[ticker] = difference
-
-        except:
-            print(f"Skipping {ticker} due to missing graham_number or price.")
-
-    # Sort by Ratio
-    sorted_portfolio = sorted(portfolio.items(), key=lambda x: x[1], reverse=True)
-
-    return sorted_portfolio
